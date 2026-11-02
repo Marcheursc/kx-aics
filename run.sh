@@ -7,6 +7,8 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 PID_DIR="$PROJECT_DIR/.pids"
 PYTHON="${PYTHON:-/root/miniconda3/bin/python}"
+# 默认只监听本机，避免同网段其他机器直接访问；需要外部访问时用 BIND_HOST=0.0.0.0 覆盖
+BIND_HOST="${BIND_HOST:-127.0.0.1}"
 STORAGE_DIR="${CHROMA_STORAGE:-$HOME/.kx-aics/storage}"
 INDEX_DB="$STORAGE_DIR/chroma.sqlite3"
 
@@ -50,7 +52,7 @@ start() {
     # 启动后端
     echo "[1/2] 启动后端服务 (FastAPI :8000)..."
     cd "$PROJECT_DIR"
-    setsid nohup "$PYTHON" -m uvicorn src.server:app --host 0.0.0.0 --port 8000 \
+    setsid nohup "$PYTHON" -m uvicorn src.server:app --host "$BIND_HOST" --port 8000 \
         > /tmp/ai-cs-backend.log 2>&1 < /dev/null &
     echo $! > "$PID_DIR/backend.pid"
     echo "      后端 PID: $(cat $PID_DIR/backend.pid)"
@@ -58,7 +60,7 @@ start() {
     # 启动前端
     echo "[2/2] 启动前端服务 (Vite :5173)..."
     cd "$FRONTEND_DIR"
-    setsid nohup "$FRONTEND_DIR/node_modules/.bin/vite" --host \
+    setsid nohup "$FRONTEND_DIR/node_modules/.bin/vite" --host "$BIND_HOST" \
         > /tmp/ai-cs-frontend.log 2>&1 < /dev/null &
     echo $! > "$PID_DIR/frontend.pid"
     echo "      前端 PID: $(cat $PID_DIR/frontend.pid)"
@@ -78,6 +80,7 @@ start() {
         echo ""
         echo "========================================"
         echo "  启动成功！"
+        echo "  监听地址: $BIND_HOST (仅本机可访问)"
         echo "  前端: http://localhost:5173"
         echo "  后端: http://localhost:8000"
         echo "  API文档: http://localhost:8000/docs"
