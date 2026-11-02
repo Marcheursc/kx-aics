@@ -1,4 +1,5 @@
 import os
+import threading
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -75,6 +76,8 @@ class CustomerServiceChain:
     def __init__(self, pool: ModelPool | None = None):
         self.pool = pool or get_pool()
         self.last_sources: list[dict] = []
+        self.last_results: list = []
+        self._lock = threading.Lock()
         self._init_memory()
         self._init_prompt_template()
 
@@ -213,8 +216,14 @@ class CustomerServiceChain:
         return sources
 
     def answer(self, user_input: str) -> str:
+        # 同一会话可能被并发请求命中，记忆读写需要串行化
+        with self._lock:
+            return self._answer(user_input)
+
+    def _answer(self, user_input: str) -> str:
         rewritten = self._rewrite_query(user_input)
         results = self.retrieve(rewritten)
+        self.last_results = results
         self.last_sources = self._build_sources(results)
 
         if not results:

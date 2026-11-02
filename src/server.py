@@ -1,31 +1,30 @@
 import os
-import uuid
+import sys
 import time
+import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
-from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from dotenv import load_dotenv
 
 load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys_path = str(PROJECT_ROOT / "src")
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-import sys
-
-sys.path.insert(0, sys_path)
 from chain import CustomerServiceChain, get_pool
-from graph import get_intent_graph
+from graph import IntentGraph
 
-sessions: dict[str, dict] = {}
-graph_sessions: dict[str, dict] = {}
 SESSION_TTL = 3600
+
+# sid -> {"kind": "chain"|"graph", "obj": 会话对象, "last_access": 时间戳}
+SESSIONS: dict[str, dict] = {}
 
 
 class ChatRequest(BaseModel):
@@ -39,41 +38,43 @@ class ChatResponse(BaseModel):
     sources: list[dict] = []
 
 
-def _get_or_create_chain(session_id: Optional[str]) -> tuple[CustomerServiceChain, str]:
+def _cleanup_expired() -> None:
     now = time.time()
-    if session_id and session_id in sessions:
-        sessions[session_id]["last_access"] = now
-        return sessions[session_id]["chain"], session_id
-
-    new_id = str(uuid.uuid4())[:8]
-    chain = CustomerServiceChain()
-    sessions[new_id] = {"chain": chain, "last_access": now}
-    return chain, new_id
-
-
-def _cleanup_expired():
-    now = time.time()
-    expired = [sid for sid, s in sessions.items() if now - s["last_access"] > SESSION_TTL]
+    expired = [sid for sid, s in SESSIONS.items() if now - s["last_access"] > SESSION_TTL]
     for sid in expired:
-        del sessions[sid]
+        SESSIONS.pop(sid, None)
+
+
+def _get_or_create(session_id: Optional[str], kind: str, factory) -> tuple[object, str]:
+    """按 sid + 会话类型取回对象；类型不符或不存在则新建独立实例。"""
+    if session_id and session_id in SESSIONS and SESSIONS[session_id]["kind"] == kind:
+        SESSIONS[session_id]["last_access"] = time.time()
+        return SESSIONS[session_id]["obj"], session_id
+
+    sid = str(uuid.uuid4())[:8]
+    obj = factory()
+    SESSIONS[sid] = {"kind": kind, "obj": obj, "last_access": time.time()}
+    return obj, sid
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[Server] 正在预热模型池 ...")
     get_pool()
-    get_intent_graph()
     print("[Server] 快修到家 AI 客服 API 服务启动\n")
     yield
     print("[Server] 服务关闭")
 
 
-app = FastAPI(title="AI智能客服系统", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="快修到家 AI 客服系统", version="2.1.0", lifespan=lifespan)
+
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    # 通配来源不能与凭据共用，否则浏览器会拒绝请求；本项目用 session_id 而非 Cookie
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -81,7 +82,7 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "sessions": len(sessions)}
+    return {"status": "ok", "sessions": len(SESSIONS)}
 
 
 @app.post("/api/chat", response_model=ChatResponse)
@@ -90,7 +91,7 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="消息不能为空")
 
     _cleanup_expired()
-    chain, sid = _get_or_create_chain(req.session_id)
+    chain, sid = _get_or_create(req.session_id, "chain", CustomerServiceChain)
 
     try:
         answer = chain.answer(req.message)
@@ -106,31 +107,26 @@ def chat_graph(req: ChatRequest):
         raise HTTPException(status_code=400, detail="消息不能为空")
 
     _cleanup_expired()
-    now = time.time()
-
-    if req.session_id and req.session_id in graph_sessions:
-        graph_sessions[req.session_id]["last_access"] = now
-        graph_obj = graph_sessions[req.session_id]["graph"]
-    else:
-        sid = str(uuid.uuid4())[:8]
-        graph_obj = get_intent_graph()
-        graph_sessions[sid] = {"graph": graph_obj, "last_access": now}
-        req.session_id = sid
+    graph_obj, sid = _get_or_create(req.session_id, "graph", IntentGraph)
 
     try:
         answer = graph_obj.answer(req.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"回答生成失败: {str(e)}")
 
-    return ChatResponse(answer=answer, session_id=req.session_id, sources=graph_obj.last_sources)
+    return ChatResponse(answer=answer, session_id=sid, sources=graph_obj.last_sources)
 
 
 @app.delete("/api/session/{session_id}")
 def clear_session(session_id: str):
-    if session_id in sessions:
-        sessions[session_id]["chain"].clear_memory()
-        return {"status": "cleared"}
-    raise HTTPException(status_code=404, detail="会话不存在")
+    entry = SESSIONS.pop(session_id, None)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    obj = entry["obj"]
+    if hasattr(obj, "clear_memory"):
+        obj.clear_memory()
+    return {"status": "cleared", "kind": entry["kind"]}
 
 
 FRONTEND_DIR = PROJECT_ROOT / "frontend" / "dist"

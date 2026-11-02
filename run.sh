@@ -3,7 +3,7 @@
 
 set -e
 
-PROJECT_DIR="/root/projects/kx-aics"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 PID_DIR="$PROJECT_DIR/.pids"
 PYTHON="${PYTHON:-/root/miniconda3/bin/python}"

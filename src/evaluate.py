@@ -92,9 +92,9 @@ def run_evaluation():
 
     for i, item in enumerate(test_data):
         question = item["question"]
-        results = chain.retrieve(question, top_k=3)
-        contexts = [text for _, text in results]
         answer = chain.answer(question)
+        # 复用 answer() 内部的检索结果，避免二次检索导致打分对象错位
+        contexts = [text for _, text in chain.last_results[:3]]
 
         ctx_text = "\n---\n".join(contexts[:3])
 
