@@ -1,0 +1,33 @@
+# ---------- 环境与密钥 ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# ---------- Node / 前端 ----------
+node_modules/
+frontend/dist/
+dist-ssr/
+*.local
+
+# ---------- 运行时产物 ----------
+.pids/
+storage/*.sqlite3
+storage/*.sqlite3-*
+*.log
+logs/
+
+# ---------- 编辑器 / 系统 ----------
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp

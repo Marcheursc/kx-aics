@@ -1,0 +1,220 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+.header h1 { font-size: 18px; font-weight: 600; }
+.subtitle { font-size: 12px; opacity: 0.8; flex: 1; }
+.btn-clear {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.btn-clear:hover { background: rgba(255,255,255,0.35); }
+
+.chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.welcome {
+  text-align: center;
+  margin: auto 0;
+  padding-bottom: 40px;
+}
+.welcome h2 { font-size: 22px; color: #333; margin-bottom: 8px; }
+.welcome p  { color: #999; margin-bottom: 24px; }
+
+.quick-asks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.btn-quick {
+  background: #f0f2ff;
+  border: 1px solid #d4d9ff;
+  color: #667eea;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.btn-quick:hover { background: #e0e4ff; }
+
+.message {
+  display: flex;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+}
+.message.user { margin-left: auto; flex-direction: row-reverse; }
+.message.assistant { margin-right: auto; }
+
+.message .bubble {
+  max-width: 75%;
+}
+.message .avatar + .bubble {
+  max-width: calc(100% - 42px);
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.message.user .avatar { background: #667eea; color: #fff; }
+.message.assistant .avatar { background: #e8e8e8; color: #666; }
+
+.bubble {
+  background: #f5f5f5;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #333;
+  word-break: break-word;
+}
+.bubble .text { word-break: break-word; }
+.message.user .bubble { background: #667eea; color: #fff; }
+.message.assistant .bubble { background: #f5f5f5; }
+
+.bubble.typing {
+  display: flex;
+  gap: 5px;
+  padding: 14px 20px;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ccc;
+  animation: blink 1.4s infinite both;
+}
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+.sources {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.sources summary {
+  color: #999;
+  cursor: pointer;
+}
+.message.user .sources summary { color: rgba(255,255,255,0.7); }
+.source-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.source-card strong { display: block; margin-bottom: 4px; color: #333; }
+.message.user .source-card { color: #333; }
+
+.input-bar {
+  display: flex;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid #eee;
+  background: #fff;
+}
+.input-bar input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+.input-bar input:focus { border-color: #667eea; }
+.input-bar button {
+  padding: 10px 24px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.input-bar button:disabled { background: #ccc; cursor: not-allowed; }
+.input-bar button:not(:disabled):hover { background: #5a6fd6; }
+
+/* ---------- Markdown 正文排版 ---------- */
+.bubble .text p { margin: 0 0 8px; }
+.bubble .text p:last-child { margin-bottom: 0; }
+.bubble .text ul,
+.bubble .text ol { margin: 6px 0 8px; padding-left: 22px; }
+.bubble .text li { margin: 3px 0; }
+.bubble .text h1,
+.bubble .text h2,
+.bubble .text h3 { font-size: 15px; margin: 10px 0 6px; }
+.bubble .text code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.bubble .text pre {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 10px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.bubble .text pre code { background: none; padding: 0; }
+.bubble .text a { color: #667eea; text-decoration: underline; }
+.bubble .text table { border-collapse: collapse; margin: 8px 0; }
+.bubble .text th,
+.bubble .text td { border: 1px solid #ddd; padding: 4px 8px; font-size: 13px; }
+
+/* 正文左对齐：抵消 #root 的全局居中 */
+.bubble .text { text-align: left; }
+
+.source-card { text-align: left; }
